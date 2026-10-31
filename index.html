@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="it" style="color-scheme: dark;">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,6 +21,18 @@
     <!-- Firebase SDK (Compat Version per file singolo HTML) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <!-- FIX DEFINITIVO: stile globale per i <select> e <option> -->
+    <style>
+        /* Forza il rendering scuro di TUTTI i controlli nativi (popup select, date picker, scrollbar) */
+        :root { color-scheme: dark; }
+
+        /* Colori espliciti degli option: sopravvivono anche se il popup resta chiaro */
+        select option {
+            background-color: #0f172a; /* slate-900 */
+            color: #f8fafc;            /* slate-100 */
+        }
+    </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-20">
 
@@ -71,7 +83,6 @@
 
             <div class="flex gap-2">
                 <input type="text" id="search-input" oninput="renderPlan()" placeholder="Cerca intervento..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-alfa">
-                <!-- FIX SELECT FILTRO: appearance-none + chevron custom (stesso bug del select log) -->
                 <div class="relative flex-shrink-0">
                     <select id="filter-area" onchange="renderPlan()" class="appearance-none bg-slate-800 border border-slate-700 rounded-xl pl-2 pr-8 py-2 text-xs leading-tight text-slate-300 focus:outline-none">
                         <option value="ALL">Tutte le aree</option>
@@ -100,7 +111,6 @@
                 <form id="log-form" onsubmit="handleAddLog(event)" class="space-y-3">
                     <div>
                         <label class="block text-[10px] text-slate-400 font-semibold mb-1">INTERVENTO</label>
-                        <!-- FIX SELECT: appearance-none + leading-tight + chevron SVG custom -->
                         <div class="relative">
                             <select id="log-item-name" required class="appearance-none w-full bg-slate-900 border border-slate-700 rounded-lg pl-3 pr-9 py-2 text-sm leading-tight text-slate-100 focus:outline-none focus:border-alfa"></select>
                             <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
@@ -220,7 +230,6 @@
         };
 
         // ================= UTILS =================
-        // Escape HTML corretto (entity NON decodificate)
         function escapeHtml(str) {
             return String(str ?? '')
                 .replace(/&/g, '&amp;')
@@ -428,6 +437,9 @@
                 const opt = document.createElement('option');
                 opt.value = i.name;
                 opt.innerText = `[${i.area}] ${i.name}`;
+                // FIX: colori espliciti per il popup (belt & suspenders)
+                opt.style.backgroundColor = "#0f172a";
+                opt.style.color = "#f8fafc";
                 select.appendChild(opt);
             });
             if (prevValue && state.items.some(i => i.name === prevValue)) {

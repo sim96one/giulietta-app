@@ -69,17 +69,33 @@
                 </div>
             </div>
 
-            <div class="flex gap-2">
-                <input type="text" id="search-input" oninput="renderPlan()" placeholder="Cerca intervento..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-alfa">
-                <select id="filter-area" onchange="renderPlan()" class="flex-shrink-0 h-10 bg-slate-800 border border-slate-700 rounded-xl px-2 text-xs text-slate-300 focus:outline-none focus:border-alfa">
-                    <option value="ALL">Tutte le aree</option>
-                    <option value="Motore">Motore</option>
-                    <option value="Distribuzione">Distribuzione</option>
-                    <option value="Liquidi">Liquidi</option>
-                    <option value="Freni e ruote">Freni/Ruote</option>
-                    <option value="Elettrico">Elettrico</option>
-                    <option value="GPL">GPL</option>
-                </select>
+            <!-- BARRA DI RICERCA E FILTRI -->
+            <div class="space-y-2">
+                <div class="flex gap-2">
+                    <input type="text" id="search-input" oninput="renderPlan()" placeholder="Cerca intervento..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-alfa">
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <select id="filter-status" onchange="renderPlan()" class="w-full h-10 bg-slate-800 border border-slate-700 rounded-xl px-2 text-xs text-slate-300 focus:outline-none focus:border-alfa">
+                        <option value="ALL">Stato: Tutti</option>
+                        <option value="TO_DO">Da Eseguire</option>
+                        <option value="DONE">Già Eseguiti</option>
+                    </select>
+                    <select id="filter-type" onchange="renderPlan()" class="w-full h-10 bg-slate-800 border border-slate-700 rounded-xl px-2 text-xs text-slate-300 focus:outline-none focus:border-alfa">
+                        <option value="ALL">Tipo: Tutti</option>
+                        <option value="mandatory">Sostituzioni Fondamentali</option>
+                        <option value="optional">Controlli Facoltativi</option>
+                    </select>
+                    <select id="filter-area" onchange="renderPlan()" class="w-full h-10 bg-slate-800 border border-slate-700 rounded-xl px-2 text-xs text-slate-300 focus:outline-none focus:border-alfa">
+                        <option value="ALL">Area: Tutte</option>
+                        <option value="Motore">Motore</option>
+                        <option value="Distribuzione">Distribuzione</option>
+                        <option value="Liquidi">Liquidi</option>
+                        <option value="Freni e ruote">Freni/Ruote</option>
+                        <option value="Elettrico">Elettrico</option>
+                        <option value="GPL">GPL</option>
+                        <option value="Documenti">Documenti</option>
+                    </select>
+                </div>
             </div>
 
             <div id="plan-items-container" class="space-y-3"></div>
@@ -146,7 +162,7 @@
                     </div>
                     <div>
                         <label class="block text-xs text-slate-400 mb-1">Anno Immatricolazione Auto</label>
-                        <input type="number" id="setting-car-year" onchange="saveSettingsFromForm()" placeholder="Es. 2014" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-100">
+                        <input type="number" id="setting-car-year" onchange="saveSettingsFromForm()" placeholder="Es. 2012" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-100">
                     </div>
                 </div>
             </div>
@@ -180,24 +196,25 @@
             kmPerWeek: 650,
             dueSoonKm: 1500,
             dueSoonDays: 45,
-            carYear: 2012 // Nuovo campo per calcolare l'età dell'auto
+            carYear: 2012
         };
 
+        // AGGIUNTA PROPRIETÀ 'type': 'mandatory' (Fondamentale) o 'optional' (Facoltativo)
         const DEFAULT_ITEMS = [
-            { id: 1, area: "Motore", name: "Olio motore + filtro olio", libretto: "15.000 km / Max 1 anno", adoptedKm: 15000, adoptedMonths: 12, who: "Fai da te", active: true, notes: "Specifica Fiat 9.55535-S2 / ACEA C3 5W-40." },
-            { id: 2, area: "Motore", name: "Candele di accensione", libretto: "30.000 km", adoptedKm: 30000, adoptedMonths: 24, who: "Officina", active: true, notes: "Candele specifiche certificate 1.4 Turbo Benzina." },
-            { id: 3, area: "Motore", name: "Filtro aria motore", libretto: "30.000 km", adoptedKm: 30000, adoptedMonths: 24, who: "Fai da te", active: true, notes: "Ispezione ad ogni cambio olio. 15k km in zone polverose." },
-            { id: 4, area: "Motore", name: "Filtro abitacolo / antipolline", libretto: "15.000 km / 1 anno", adoptedKm: 15000, adoptedMonths: 12, who: "Fai da te", active: true, notes: "Carboni attivi." },
-            { id: 5, area: "Distribuzione", name: "Cinghia distribuzione + Pompa Acqua", libretto: "120.000 km / 72 mesi", adoptedKm: 120000, adoptedMonths: 72, who: "Officina", active: true, notes: "Tassativo max 6 anni. Uso gravoso/polveroso: 60.000 km / 4 anni (48 mesi)." },
-            { id: 6, area: "Distribuzione", name: "Cinghia servizi / accessori", libretto: "120.000 km / 72 mesi", adoptedKm: 120000, adoptedMonths: 72, who: "Officina", active: true, notes: "Sostituire insieme alla distribuzione. Uso gravoso: 60.000 km / 4 anni." },
-            { id: 7, area: "Liquidi", name: "Liquido raffreddamento (Paraflu UP)", libretto: "Ogni 4-5 anni", adoptedKm: 90000, adoptedMonths: 60, who: "Officina", active: true, notes: "Liquido rosso OAT." },
-            { id: 8, area: "Liquidi", name: "Olio cambio manuale (C635)", libretto: "Non previsto", adoptedKm: 90000, adoptedMonths: 72, who: "Officina", active: true, notes: "Consigliato per longevità sincronizzatori." },
-            { id: 9, area: "Liquidi", name: "Liquido freni (DOT 4)", libretto: "24 mesi", adoptedKm: null, adoptedMonths: 24, who: "Officina", active: true, notes: "Sostituzione igroscopica a tempo." },
-            { id: 10, area: "Freni e ruote", name: "Pastiglie e dischi freno", libretto: "Ad ogni tagliando", adoptedKm: 15000, adoptedMonths: 12, who: "Fai da te", active: true, notes: "Verifica usura visiva." },
-            { id: 11, area: "Freni e ruote", name: "Inversione pneumatici", libretto: "15.000 km", adoptedKm: 15000, adoptedMonths: 12, who: "Fai da te", active: true, notes: "Controllo pressione a freddo." },
-            { id: 12, area: "Elettrico", name: "Batteria Start&Stop (EFB/AGM)", libretto: "Al bisogno", adoptedKm: null, adoptedMonths: 36, who: "Fai da te", active: true, notes: "Test carica annuale." },
-            { id: 13, area: "Documenti", name: "Revisione Ministeriale", libretto: "Ogni 2 anni", adoptedKm: null, adoptedMonths: 24, who: "Centro Revisioni", active: true, notes: "Scadenza entro fine mese." },
-            { id: 14, area: "GPL", name: "Filtri impianto GPL", libretto: "15.000 km / 12 mesi", adoptedKm: 15000, adoptedMonths: 12, who: "Officina GPL", active: false, notes: "Attivare se presente impianto GPL." }
+            { id: 1, area: "Motore", name: "Olio motore + filtro olio", libretto: "15.000 km / Max 1 anno", adoptedKm: 15000, adoptedMonths: 12, who: "Fai da te", active: true, type: "mandatory", notes: "Specifica Fiat 9.55535-S2 / ACEA C3 5W-40." },
+            { id: 2, area: "Motore", name: "Candele di accensione", libretto: "30.000 km", adoptedKm: 30000, adoptedMonths: 24, who: "Officina", active: true, type: "mandatory", notes: "Candele specifiche certificate 1.4 Turbo Benzina." },
+            { id: 3, area: "Motore", name: "Filtro aria motore", libretto: "30.000 km", adoptedKm: 30000, adoptedMonths: 24, who: "Fai da te", active: true, type: "mandatory", notes: "15k km in zone polverose." },
+            { id: 4, area: "Motore", name: "Filtro abitacolo / antipolline", libretto: "15.000 km / 1 anno", adoptedKm: 15000, adoptedMonths: 12, who: "Fai da te", active: true, type: "mandatory", notes: "Carboni attivi." },
+            { id: 5, area: "Distribuzione", name: "Cinghia distribuzione + Pompa Acqua", libretto: "120.000 km / 72 mesi", adoptedKm: 120000, adoptedMonths: 72, who: "Officina", active: true, type: "mandatory", notes: "Tassativo max 6 anni. Uso gravoso/polveroso: 60.000 km / 4 anni (48 mesi)." },
+            { id: 6, area: "Distribuzione", name: "Cinghia servizi / accessori", libretto: "120.000 km / 72 mesi", adoptedKm: 120000, adoptedMonths: 72, who: "Officina", active: true, type: "mandatory", notes: "Sostituire insieme alla distribuzione. Uso gravoso: 60.000 km / 4 anni." },
+            { id: 7, area: "Liquidi", name: "Liquido raffreddamento (Paraflu UP)", libretto: "Ogni 4-5 anni", adoptedKm: 90000, adoptedMonths: 60, who: "Officina", active: true, type: "optional", notes: "Liquido rosso OAT." },
+            { id: 8, area: "Liquidi", name: "Olio cambio manuale (C635)", libretto: "Non previsto", adoptedKm: 90000, adoptedMonths: 72, who: "Officina", active: true, type: "optional", notes: "Consigliato per longevità sincronizzatori." },
+            { id: 9, area: "Liquidi", name: "Liquido freni (DOT 4)", libretto: "24 mesi", adoptedKm: null, adoptedMonths: 24, who: "Officina", active: true, type: "mandatory", notes: "Sostituzione igroscopica a tempo." },
+            { id: 10, area: "Freni e ruote", name: "Pastiglie e dischi freno", libretto: "Ad ogni tagliando", adoptedKm: 15000, adoptedMonths: 12, who: "Fai da te", active: true, type: "mandatory", notes: "Verifica usura visiva." },
+            { id: 11, area: "Freni e ruote", name: "Inversione pneumatici", libretto: "15.000 km", adoptedKm: 15000, adoptedMonths: 12, who: "Fai da te", active: true, type: "optional", notes: "Controllo pressione a freddo." },
+            { id: 12, area: "Elettrico", name: "Batteria Start&Stop (EFB/AGM)", libretto: "Al bisogno", adoptedKm: null, adoptedMonths: 36, who: "Fai da te", active: true, type: "optional", notes: "Test carica annuale." },
+            { id: 13, area: "Documenti", name: "Revisione Ministeriale", libretto: "Ogni 2 anni", adoptedKm: null, adoptedMonths: 24, who: "Centro Revisioni", active: true, type: "mandatory", notes: "Scadenza entro fine mese." },
+            { id: 14, area: "GPL", name: "Filtri impianto GPL", libretto: "15.000 km / 12 mesi", adoptedKm: 15000, adoptedMonths: 12, who: "Officina GPL", active: false, type: "mandatory", notes: "Attivare se presente impianto GPL." }
         ];
 
         let state = {
@@ -289,7 +306,7 @@
         }
 
         function computeItemStatus(item) {
-            if (!item || !item.active) return { status: 'INATTIVO', label: 'INATTIVO', color: 'slate', priority: 5, lastKm: null, nextKm: null, kmMissing: null };
+            if (!item || !item.active) return { status: 'INATTIVO', label: 'INATTIVO', color: 'slate', priority: 5, lastKm: null, nextKm: null, nextDate: null, kmMissing: null };
 
             const itemLogs = state.logs.filter(l => l.itemName === item.name);
             const lastKm = itemLogs.length ? Math.max(...itemLogs.map(l => Number(l.km) || 0)) : null;
@@ -297,38 +314,29 @@
             const currentKm = state.settings.currentKm || 0;
             const now = new Date().getTime();
 
-            // LOGICA PER INTERVENTI MAI ESEGUITI (Ora controlla anche il tempo!)
+            // LOGICA PER INTERVENTI MAI ESEGUITI
             if (lastKm === null && lastDate === null) {
                 let isKmScaduto = item.adoptedKm && currentKm >= item.adoptedKm;
                 let isTimeScaduto = false;
-                
-                // Se non ho mai registrato l'intervento, calcolo l'età dell'auto dall'anno di immatricolazione
+                let nextDate = null;
+
                 if (item.adoptedMonths && state.settings.carYear) {
                     const carAgeMonths = (new Date().getFullYear() - state.settings.carYear) * 12 + new Date().getMonth();
                     if (carAgeMonths >= item.adoptedMonths) {
                         isTimeScaduto = true;
                     }
+                    nextDate = new Date(state.settings.carYear + (item.adoptedMonths / 12), 0, 1); 
                 }
 
                 if (isKmScaduto || isTimeScaduto) {
                     return { 
-                        status: 'MAI_ESEGUITO_SCADUTO', 
-                        label: 'DA FARE (SCADUTO)', 
-                        color: 'red', 
-                        priority: 0, 
-                        lastKm: null, 
-                        nextKm: item.adoptedKm, 
-                        kmMissing: item.adoptedKm ? item.adoptedKm - currentKm : null 
+                        status: 'MAI_ESEGUITO_SCADUTO', label: 'DA FARE (SCADUTO)', color: 'red', priority: 0, 
+                        lastKm: null, nextKm: item.adoptedKm, nextDate: nextDate, kmMissing: item.adoptedKm ? item.adoptedKm - currentKm : null 
                     };
                 }
                 return { 
-                    status: 'DA_VERIFICARE', 
-                    label: 'MAI FATTO', 
-                    color: 'blue', 
-                    priority: 3, 
-                    lastKm: null, 
-                    nextKm: item.adoptedKm, 
-                    kmMissing: item.adoptedKm ? item.adoptedKm - currentKm : null 
+                    status: 'DA_VERIFICARE', label: 'MAI FATTO', color: 'blue', priority: 3, 
+                    lastKm: null, nextKm: item.adoptedKm, nextDate: nextDate, kmMissing: item.adoptedKm ? item.adoptedKm - currentKm : null 
                 };
             }
 
@@ -339,16 +347,18 @@
             let isScaduto = (kmMissing !== null && kmMissing <= 0) || (nextDateFromTime !== null && nextDateFromTime.getTime() <= now);
             let isInScadenza = !isScaduto && ((kmMissing !== null && kmMissing <= (state.settings.dueSoonKm || 1500)) || (nextDateFromTime !== null && (nextDateFromTime.getTime() - now) <= ((state.settings.dueSoonDays || 45) * 86400000)));
 
-            if (isScaduto) return { status: 'SCADUTO', label: 'SCADUTO', color: 'red', priority: 1, lastKm, nextKm, kmMissing };
-            if (isInScadenza) return { status: 'IN_SCADENZA', label: 'IN SCADENZA', color: 'amber', priority: 2, lastKm, nextKm, kmMissing };
+            if (isScaduto) return { status: 'SCADUTO', label: 'SCADUTO', color: 'red', priority: 1, lastKm, nextKm, nextDate: nextDateFromTime, kmMissing };
+            if (isInScadenza) return { status: 'IN_SCADENZA', label: 'IN SCADENZA', color: 'amber', priority: 2, lastKm, nextKm, nextDate: nextDateFromTime, kmMissing };
 
-            return { status: 'OK', label: 'REGOLARE', color: 'emerald', priority: 4, lastKm, nextKm, kmMissing };
+            return { status: 'OK', label: 'REGOLARE', color: 'emerald', priority: 4, lastKm, nextKm, nextDate: nextDateFromTime, kmMissing };
         }
 
         function renderPlan() {
             const container = document.getElementById('plan-items-container');
             const search = document.getElementById('search-input').value.toLowerCase();
             const areaFilter = document.getElementById('filter-area').value;
+            const statusFilter = document.getElementById('filter-status').value;
+            const typeFilter = document.getElementById('filter-type').value;
 
             let counts = { SCADUTO: 0, IN_SCADENZA: 0, OK: 0 };
             
@@ -368,7 +378,15 @@
             container.innerHTML = '';
             
             computedList.forEach(({ item, comp }) => {
+                // Filtri
                 if (areaFilter !== 'ALL' && item.area !== areaFilter) return;
+                if (typeFilter !== 'ALL' && item.type !== typeFilter) return;
+                
+                const isDone = comp.status === 'OK';
+                const isTodo = ['SCADUTO', 'IN_SCADENZA', 'MAI_ESEGUITO_SCADUTO', 'DA_VERIFICARE'].includes(comp.status);
+                
+                if (statusFilter === 'TO_DO' && !isTodo) return;
+                if (statusFilter === 'DONE' && !isDone) return;
 
                 const nameText = (item.name || '').toLowerCase();
                 const notesText = (item.notes || '').toLowerCase();
@@ -385,6 +403,21 @@
                 const safeNameForOnclick = String(item.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
                 const hasKmMissing = comp.kmMissing !== null && comp.kmMissing !== undefined && !isNaN(comp.kmMissing);
 
+                // Formattazione della prossima scadenza
+                let nextScadenzaStr = '—';
+                if (comp.nextKm && comp.nextDate) {
+                    nextScadenzaStr = `<span class="text-amber-400">${comp.nextKm.toLocaleString('it-IT')} km</span><br><span class="text-[10px] text-slate-400">o ${comp.nextDate.toLocaleDateString('it-IT')}</span>`;
+                } else if (comp.nextKm) {
+                    nextScadenzaStr = `<span class="text-amber-400">${comp.nextKm.toLocaleString('it-IT')} km</span>`;
+                } else if (comp.nextDate) {
+                    nextScadenzaStr = `<span class="text-amber-400">📅 ${comp.nextDate.toLocaleDateString('it-IT')}</span>`;
+                }
+
+                // Etichetta tipo
+                const typeLabel = item.type === 'mandatory' 
+                    ? '<span class="ml-1 text-[8px] font-bold text-red-200 bg-red-900/50 px-1 py-0.5 rounded border border-red-700/50 uppercase">Fondamentale</span>'
+                    : '<span class="ml-1 text-[8px] font-bold text-slate-300 bg-slate-700/50 px-1 py-0.5 rounded border border-slate-600/50 uppercase">Facoltativo</span>';
+
                 const card = document.createElement('div');
                 const isRed = comp.status === 'SCADUTO' || comp.status === 'MAI_ESEGUITO_SCADUTO';
                 card.className = `bg-slate-800 border ${isRed ? 'border-red-800/80' : 'border-slate-700'} rounded-xl p-3 shadow-sm space-y-2`;
@@ -393,13 +426,14 @@
                     <div class="flex items-start justify-between gap-2">
                         <div>
                             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">${escapeHtml(item.area || '')}</span>
-                            <h4 class="font-bold text-sm text-slate-100 leading-tight">${escapeHtml(item.name || '')}</h4>
+                            ${typeLabel}
+                            <h4 class="font-bold text-sm text-slate-100 leading-tight mt-0.5">${escapeHtml(item.name || '')}</h4>
                         </div>
                         <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${badgeColors[comp.color] || badgeColors.slate}">${comp.label}</span>
                     </div>
                     <div class="text-xs text-slate-300 grid grid-cols-2 gap-x-2 gap-y-1 bg-slate-900/60 p-2 rounded-lg">
                         <div><span class="text-slate-500 text-[10px]">Ultimo Eseguito:</span><br><span class="font-mono font-semibold">${comp.lastKm ? comp.lastKm.toLocaleString('it-IT') + ' km' : 'Non registrato'}</span></div>
-                        <div><span class="text-slate-500 text-[10px]">Prossima Scadenza:</span><br><span class="font-mono font-semibold">${comp.nextKm ? comp.nextKm.toLocaleString('it-IT') + ' km' : '—'}</span></div>
+                        <div><span class="text-slate-500 text-[10px]">Prossima Scadenza:</span><br><span class="font-mono font-semibold">${nextScadenzaStr}</span></div>
                         ${hasKmMissing ? `
                             <div class="col-span-2 pt-1 border-t border-slate-800 flex justify-between items-center text-[11px]">
                                 <span class="text-slate-400">Residuo:</span>

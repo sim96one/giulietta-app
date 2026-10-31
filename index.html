@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giulietta 1.4T - Cloud App</title>
+    <title>Giulietta 1.4T - Cloud App (v2.1)</title>
     <!-- PWA Web App Capable -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,20 +22,10 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
-    <!-- FIX DEFINITIVO PER I <select> SU CHROMIUM/WINDOWS -->
     <style>
         :root { color-scheme: dark; }
-
-        select {
-            min-height: 2.5rem;
-            line-height: normal;
-        }
-
-        select option {
-            background-color: #0f172a;
-            color: #f8fafc;
-            padding: 6px 8px;
-        }
+        select { min-height: 2.5rem; line-height: normal; }
+        select option { background-color: #0f172a; color: #f8fafc; padding: 6px 8px; }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-20">
@@ -264,7 +254,7 @@
             const text = document.getElementById('sync-text');
             if (isOnline === true) {
                 badge.className = "w-2 h-2 rounded-full bg-emerald-500 inline-block";
-                text.innerText = "Sincronizzato Cloud";
+                text.innerHTML = "Sincronizzato <span class='text-emerald-400 font-bold'>(v2.1)</span>";
             } else if (isOnline === false) {
                 badge.className = "w-2 h-2 rounded-full bg-red-500 inline-block";
                 text.innerText = "Errore Connessione";
@@ -280,9 +270,10 @@
         });
 
         function updateUI() {
-            document.getElementById('header-km-display').innerText = `${state.settings.currentKm.toLocaleString('it-IT')} km`;
-            document.getElementById('setting-current-km').value = state.settings.currentKm;
-            document.getElementById('setting-km-week').value = state.settings.kmPerWeek;
+            const currentKm = state.settings.currentKm || 0;
+            document.getElementById('header-km-display').innerText = `${currentKm.toLocaleString('it-IT')} km`;
+            document.getElementById('setting-current-km').value = currentKm;
+            document.getElementById('setting-km-week').value = state.settings.kmPerWeek || 650;
             renderPlan();
             renderLogs();
             populateLogSelect();
@@ -303,22 +294,22 @@
         }
 
         function computeItemStatus(item) {
-            // FIX: Aggiunti lastKm, nextKm e kmMissing anche per gli elementi INATTIVI
-            if (!item.active) return { status: 'INATTIVO', label: 'INATTIVO', color: 'slate', priority: 5, lastKm: null, nextKm: null, kmMissing: null };
+            // Sicurezza: se l'elemento non esiste o è disattivato, restituiamo valori nulli
+            if (!item || !item.active) return { status: 'INATTIVO', label: 'INATTIVO', color: 'slate', priority: 5, lastKm: null, nextKm: null, kmMissing: null };
 
             const itemLogs = state.logs.filter(l => l.itemName === item.name);
-            const lastKm = itemLogs.length ? Math.max(...itemLogs.map(l => Number(l.km))) : null;
-            const lastDate = itemLogs.length ? Math.max(...itemLogs.map(l => new Date(l.date).getTime())) : null;
+            const lastKm = itemLogs.length ? Math.max(...itemLogs.map(l => Number(l.km) || 0)) : null;
+            const lastDate = itemLogs.length ? Math.max(...itemLogs.map(l => new Date(l.date).getTime() || 0)) : null;
 
-            const nextKm = (lastKm !== null && item.adoptedKm) ? lastKm + item.adoptedKm : null;
+            const nextKm = (lastKm !== null && item.adoptedKm) ? lastKm + Number(item.adoptedKm) : null;
             const nextDateFromTime = (lastDate !== null && item.adoptedMonths)
-                ? new Date(lastDate + (item.adoptedMonths * 30.4375 * 24 * 60 * 60 * 1000)) : null;
+                ? new Date(lastDate + (Number(item.adoptedMonths) * 30.4375 * 24 * 60 * 60 * 1000)) : null;
 
             const now = new Date().getTime();
-            const kmMissing = nextKm !== null ? nextKm - state.settings.currentKm : null;
+            const kmMissing = nextKm !== null ? nextKm - (state.settings.currentKm || 0) : null;
 
             let isScaduto = (kmMissing !== null && kmMissing <= 0) || (nextDateFromTime !== null && nextDateFromTime.getTime() <= now);
-            let isInScadenza = !isScaduto && ((kmMissing !== null && kmMissing <= state.settings.dueSoonKm) || (nextDateFromTime !== null && (nextDateFromTime.getTime() - now) <= (state.settings.dueSoonDays * 86400000)));
+            let isInScadenza = !isScaduto && ((kmMissing !== null && kmMissing <= (state.settings.dueSoonKm || 1500)) || (nextDateFromTime !== null && (nextDateFromTime.getTime() - now) <= ((state.settings.dueSoonDays || 45) * 86400000)));
 
             if (lastKm === null && lastDate === null) return { status: 'DA_VERIFICARE', label: 'DA VERIFICARE', color: 'blue', priority: 3, lastKm, nextKm, kmMissing };
             if (isScaduto) return { status: 'SCADUTO', label: 'SCADUTO', color: 'red', priority: 1, lastKm, nextKm, kmMissing };
@@ -363,6 +354,9 @@
 
                 const safeNameForOnclick = String(item.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
+                // Protezione assoluta contro undefined/NaN
+                const hasKmMissing = comp.kmMissing !== null && comp.kmMissing !== undefined && !isNaN(comp.kmMissing);
+
                 const card = document.createElement('div');
                 card.className = `bg-slate-800 border ${comp.status === 'SCADUTO' ? 'border-red-800/80' : 'border-slate-700'} rounded-xl p-3 shadow-sm space-y-2`;
                 card.innerHTML = `
@@ -371,12 +365,12 @@
                             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">${escapeHtml(item.area || '')}</span>
                             <h4 class="font-bold text-sm text-slate-100 leading-tight">${escapeHtml(item.name || '')}</h4>
                         </div>
-                        <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${badgeColors[comp.color]}">${comp.label}</span>
+                        <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${badgeColors[comp.color] || badgeColors.slate}">${comp.label}</span>
                     </div>
                     <div class="text-xs text-slate-300 grid grid-cols-2 gap-x-2 gap-y-1 bg-slate-900/60 p-2 rounded-lg">
                         <div><span class="text-slate-500 text-[10px]">Ultimo Eseguito:</span><br><span class="font-mono font-semibold">${comp.lastKm ? comp.lastKm.toLocaleString('it-IT') + ' km' : 'Non registrato'}</span></div>
                         <div><span class="text-slate-500 text-[10px]">Prossima Scadenza:</span><br><span class="font-mono font-semibold">${comp.nextKm ? comp.nextKm.toLocaleString('it-IT') + ' km' : '—'}</span></div>
-                        ${comp.kmMissing !== null ? `
+                        ${hasKmMissing ? `
                             <div class="col-span-2 pt-1 border-t border-slate-800 flex justify-between items-center text-[11px]">
                                 <span class="text-slate-400">Residuo:</span>
                                 <span class="font-mono font-bold ${comp.kmMissing < 0 ? 'text-red-400' : 'text-amber-400'}">
@@ -411,7 +405,7 @@
                     </div>
                     <div class="flex justify-between text-slate-400 font-mono text-[11px]">
                         <span>📅 ${new Date(log.date).toLocaleDateString('it-IT')}</span>
-                        <span>🛣️ ${Number(log.km).toLocaleString('it-IT')} km</span>
+                        <span>🛣️ ${Number(log.km || 0).toLocaleString('it-IT')} km</span>
                     </div>
                     ${log.doneBy || log.cost ? `<div class="flex justify-between text-slate-400 text-[11px] pt-0.5"><span>Eseguito da: ${escapeHtml(log.doneBy || '—')}</span><span class="font-semibold text-emerald-400">${log.cost ? '€ ' + Number(log.cost).toFixed(2) : ''}</span></div>` : ''}
                     ${log.notes ? `<p class="text-slate-400 italic text-[10px] pt-1 border-t border-slate-700/50">${escapeHtml(log.notes)}</p>` : ''}

@@ -52,6 +52,7 @@
 
     <main class="max-w-xl mx-auto p-4">
 
+        <!-- TAB 1: PIANO -->
         <section id="tab-plan" class="space-y-4">
             <div class="grid grid-cols-3 gap-2 text-center text-xs select-none">
                 <div class="bg-red-950/40 border border-red-800/50 p-2.5 rounded-xl">
@@ -84,6 +85,7 @@
             <div id="plan-items-container" class="space-y-3"></div>
         </section>
 
+        <!-- TAB 2: REGISTRO -->
         <section id="tab-logs" class="space-y-4 hidden">
             <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-3 shadow">
                 <h3 class="font-bold text-sm text-slate-200">➕ Registra Nuovo Intervento</h3>
@@ -126,6 +128,7 @@
             </div>
         </section>
 
+        <!-- TAB 3: IMPOSTAZIONI & BACKUP -->
         <section id="tab-settings" class="space-y-4 hidden">
             <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-3 shadow">
                 <h3 class="font-bold text-sm text-slate-200">🚘 Parametri Veicolo</h3>
@@ -140,6 +143,10 @@
                     <div>
                         <label class="block text-xs text-slate-400 mb-1">Km Medi Settimanali</label>
                         <input type="number" id="setting-km-week" onchange="saveSettingsFromForm()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-100">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Anno Immatricolazione Auto</label>
+                        <input type="number" id="setting-car-year" onchange="saveSettingsFromForm()" placeholder="Es. 2014" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-100">
                     </div>
                 </div>
             </div>
@@ -172,16 +179,17 @@
             currentKm: 62200,
             kmPerWeek: 650,
             dueSoonKm: 1500,
-            dueSoonDays: 45
+            dueSoonDays: 45,
+            carYear: 2012 // Nuovo campo per calcolare l'età dell'auto
         };
 
         const DEFAULT_ITEMS = [
-            { id: 1, area: "Motore", name: "Olio motore + filtro olio", libretto: "15.000 km / 12 mesi", adoptedKm: 10000, adoptedMonths: 12, who: "Fai da te", active: true, notes: "Specifica Fiat 9.55535-S2 / ACEA C3 5W-40." },
-            { id: 2, area: "Motore", name: "Candele di accensione", libretto: "30.000 km", adoptedKm: 30000, adoptedMonths: 24, who: "Officina", active: true, notes: "Candele Iridio/Platino T-Jet." },
-            { id: 3, area: "Motore", name: "Filtro aria motore", libretto: "30.000 km", adoptedKm: 30000, adoptedMonths: 24, who: "Fai da te", active: true, notes: "Ispezione ad ogni cambio olio." },
-            { id: 4, area: "Motore", name: "Filtro abitacolo / antipolline", libretto: "15.000 km / 12 mesi", adoptedKm: 15000, adoptedMonths: 12, who: "Fai da te", active: true, notes: "Carboni attivi." },
-            { id: 5, area: "Distribuzione", name: "Kit Distribuzione + Pompa Acqua", libretto: "120.000 km / 60 mesi", adoptedKm: 120000, adoptedMonths: 60, who: "Officina", active: true, notes: "Sostituire assieme al tendicinghia e cinghia servizi." },
-            { id: 6, area: "Distribuzione", name: "Cinghia servizi / accessori", libretto: "120.000 km / 60 mesi", adoptedKm: 120000, adoptedMonths: 60, who: "Officina", active: true, notes: "Controllare usura visiva." },
+            { id: 1, area: "Motore", name: "Olio motore + filtro olio", libretto: "15.000 km / Max 1 anno", adoptedKm: 15000, adoptedMonths: 12, who: "Fai da te", active: true, notes: "Specifica Fiat 9.55535-S2 / ACEA C3 5W-40." },
+            { id: 2, area: "Motore", name: "Candele di accensione", libretto: "30.000 km", adoptedKm: 30000, adoptedMonths: 24, who: "Officina", active: true, notes: "Candele specifiche certificate 1.4 Turbo Benzina." },
+            { id: 3, area: "Motore", name: "Filtro aria motore", libretto: "30.000 km", adoptedKm: 30000, adoptedMonths: 24, who: "Fai da te", active: true, notes: "Ispezione ad ogni cambio olio. 15k km in zone polverose." },
+            { id: 4, area: "Motore", name: "Filtro abitacolo / antipolline", libretto: "15.000 km / 1 anno", adoptedKm: 15000, adoptedMonths: 12, who: "Fai da te", active: true, notes: "Carboni attivi." },
+            { id: 5, area: "Distribuzione", name: "Cinghia distribuzione + Pompa Acqua", libretto: "120.000 km / 72 mesi", adoptedKm: 120000, adoptedMonths: 72, who: "Officina", active: true, notes: "Tassativo max 6 anni. Uso gravoso/polveroso: 60.000 km / 4 anni (48 mesi)." },
+            { id: 6, area: "Distribuzione", name: "Cinghia servizi / accessori", libretto: "120.000 km / 72 mesi", adoptedKm: 120000, adoptedMonths: 72, who: "Officina", active: true, notes: "Sostituire insieme alla distribuzione. Uso gravoso: 60.000 km / 4 anni." },
             { id: 7, area: "Liquidi", name: "Liquido raffreddamento (Paraflu UP)", libretto: "Ogni 4-5 anni", adoptedKm: 90000, adoptedMonths: 60, who: "Officina", active: true, notes: "Liquido rosso OAT." },
             { id: 8, area: "Liquidi", name: "Olio cambio manuale (C635)", libretto: "Non previsto", adoptedKm: 90000, adoptedMonths: 72, who: "Officina", active: true, notes: "Consigliato per longevità sincronizzatori." },
             { id: 9, area: "Liquidi", name: "Liquido freni (DOT 4)", libretto: "24 mesi", adoptedKm: null, adoptedMonths: 24, who: "Officina", active: true, notes: "Sostituzione igroscopica a tempo." },
@@ -260,6 +268,7 @@
             document.getElementById('header-km-display').innerText = `${currentKm.toLocaleString('it-IT')} km`;
             document.getElementById('setting-current-km').value = currentKm;
             document.getElementById('setting-km-week').value = state.settings.kmPerWeek || 650;
+            document.getElementById('setting-car-year').value = state.settings.carYear || '';
             renderPlan();
             renderLogs();
             populateLogSelect();
@@ -279,7 +288,6 @@
             activeBtn.classList.add('border-alfa', 'text-alfa', 'font-bold');
         }
 
-        // LOGICA INTEGRATA: Base originale + Idea di Gemini per i "Mai Eseguiti"
         function computeItemStatus(item) {
             if (!item || !item.active) return { status: 'INATTIVO', label: 'INATTIVO', color: 'slate', priority: 5, lastKm: null, nextKm: null, kmMissing: null };
 
@@ -289,9 +297,20 @@
             const currentKm = state.settings.currentKm || 0;
             const now = new Date().getTime();
 
-            // NUOVA LOGICA GEMINI (Ripulita): Interventi mai eseguiti
+            // LOGICA PER INTERVENTI MAI ESEGUITI (Ora controlla anche il tempo!)
             if (lastKm === null && lastDate === null) {
-                if (item.adoptedKm && currentKm >= item.adoptedKm) {
+                let isKmScaduto = item.adoptedKm && currentKm >= item.adoptedKm;
+                let isTimeScaduto = false;
+                
+                // Se non ho mai registrato l'intervento, calcolo l'età dell'auto dall'anno di immatricolazione
+                if (item.adoptedMonths && state.settings.carYear) {
+                    const carAgeMonths = (new Date().getFullYear() - state.settings.carYear) * 12 + new Date().getMonth();
+                    if (carAgeMonths >= item.adoptedMonths) {
+                        isTimeScaduto = true;
+                    }
+                }
+
+                if (isKmScaduto || isTimeScaduto) {
                     return { 
                         status: 'MAI_ESEGUITO_SCADUTO', 
                         label: 'DA FARE (SCADUTO)', 
@@ -299,12 +318,12 @@
                         priority: 0, 
                         lastKm: null, 
                         nextKm: item.adoptedKm, 
-                        kmMissing: item.adoptedKm - currentKm 
+                        kmMissing: item.adoptedKm ? item.adoptedKm - currentKm : null 
                     };
                 }
                 return { 
                     status: 'DA_VERIFICARE', 
-                    label: 'MAI FATTO (REGOLARE)', 
+                    label: 'MAI FATTO', 
                     color: 'blue', 
                     priority: 3, 
                     lastKm: null, 
@@ -335,7 +354,6 @@
             
             const computedList = state.items.map(item => {
                 const comp = computeItemStatus(item);
-                // Aggiorna i contatori (includendo la nuova logica)
                 if (comp.status === 'SCADUTO' || comp.status === 'MAI_ESEGUITO_SCADUTO') counts.SCADUTO++;
                 else if (comp.status === 'IN_SCADENZA') counts.IN_SCADENZA++;
                 else if (comp.status === 'OK' || comp.status === 'DA_VERIFICARE') counts.OK++;
@@ -343,7 +361,6 @@
                 return { item, comp };
             }).sort((a, b) => a.comp.priority - b.comp.priority);
 
-            // Aggiorna UI contatori (usando gli ID corretti del tuo HTML)
             document.getElementById('cnt-scaduto').innerText = counts.SCADUTO;
             document.getElementById('cnt-scadenza').innerText = counts.IN_SCADENZA;
             document.getElementById('cnt-ok').innerText = counts.OK;
@@ -357,7 +374,6 @@
                 const notesText = (item.notes || '').toLowerCase();
                 if (search && !nameText.includes(search) && !notesText.includes(search)) return;
 
-                // MAPPATURA COLORI STATICA (Fix per Tailwind Dinamico)
                 const badgeColors = {
                     red: 'bg-red-900/60 text-red-300 border-red-700',
                     amber: 'bg-amber-900/60 text-amber-300 border-amber-700',
@@ -370,7 +386,6 @@
                 const hasKmMissing = comp.kmMissing !== null && comp.kmMissing !== undefined && !isNaN(comp.kmMissing);
 
                 const card = document.createElement('div');
-                // Colore bordo per scaduti
                 const isRed = comp.status === 'SCADUTO' || comp.status === 'MAI_ESEGUITO_SCADUTO';
                 card.className = `bg-slate-800 border ${isRed ? 'border-red-800/80' : 'border-slate-700'} rounded-xl p-3 shadow-sm space-y-2`;
                 
@@ -491,6 +506,7 @@
 
         function saveSettingsFromForm() {
             state.settings.kmPerWeek = Number(document.getElementById('setting-km-week').value) || 650;
+            state.settings.carYear = Number(document.getElementById('setting-car-year').value) || null;
             syncToCloud();
         }
 

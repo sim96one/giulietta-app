@@ -71,15 +71,23 @@
 
             <div class="flex gap-2">
                 <input type="text" id="search-input" oninput="renderPlan()" placeholder="Cerca intervento..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-alfa">
-                <select id="filter-area" onchange="renderPlan()" class="bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-xs text-slate-300 focus:outline-none">
-                    <option value="ALL">Tutte le aree</option>
-                    <option value="Motore">Motore</option>
-                    <option value="Distribuzione">Distribuzione</option>
-                    <option value="Liquidi">Liquidi</option>
-                    <option value="Freni e ruote">Freni/Ruote</option>
-                    <option value="Elettrico">Elettrico</option>
-                    <option value="GPL">GPL</option>
-                </select>
+                <!-- FIX SELECT FILTRO: appearance-none + chevron custom (stesso bug del select log) -->
+                <div class="relative flex-shrink-0">
+                    <select id="filter-area" onchange="renderPlan()" class="appearance-none bg-slate-800 border border-slate-700 rounded-xl pl-2 pr-8 py-2 text-xs leading-tight text-slate-300 focus:outline-none">
+                        <option value="ALL">Tutte le aree</option>
+                        <option value="Motore">Motore</option>
+                        <option value="Distribuzione">Distribuzione</option>
+                        <option value="Liquidi">Liquidi</option>
+                        <option value="Freni e ruote">Freni/Ruote</option>
+                        <option value="Elettrico">Elettrico</option>
+                        <option value="GPL">GPL</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2 text-slate-400">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </div>
+                </div>
             </div>
 
             <div id="plan-items-container" class="space-y-3"></div>
@@ -92,8 +100,15 @@
                 <form id="log-form" onsubmit="handleAddLog(event)" class="space-y-3">
                     <div>
                         <label class="block text-[10px] text-slate-400 font-semibold mb-1">INTERVENTO</label>
-                        <!-- FIX STILE SELECT: text-sm, py-2 e leading-normal risolvono il taglio del testo su Chrome/Edge -->
-                        <select id="log-item-name" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm leading-normal text-slate-100 focus:outline-none focus:border-alfa"></select>
+                        <!-- FIX SELECT: appearance-none + leading-tight + chevron SVG custom -->
+                        <div class="relative">
+                            <select id="log-item-name" required class="appearance-none w-full bg-slate-900 border border-slate-700 rounded-lg pl-3 pr-9 py-2 text-sm leading-tight text-slate-100 focus:outline-none focus:border-alfa"></select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+                        </div>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -205,13 +220,14 @@
         };
 
         // ================= UTILS =================
+        // Escape HTML corretto (entity NON decodificate)
         function escapeHtml(str) {
             return String(str ?? '')
-                .replace(/&/g, '&')
-                .replace(/</g, '<')
-                .replace(/>/g, '>')
-                .replace(/"/g, '"')
-                .replace(/'/g, ''');
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
 
         // ================= REALTIME CLOUD SYNC =================
@@ -238,4 +254,257 @@
             docRef.set(state).then(() => {
                 updateSyncBadge(true);
             }).catch((err) => {
-                console.error("Errore salvataggio Cloud:",
+                console.error("Errore salvataggio Cloud:", err);
+                updateSyncBadge(false);
+                alert("⚠️ Errore di salvataggio in Cloud! Verifica la connessione o le regole di Firestore.");
+            });
+        }
+
+        function updateSyncBadge(isOnline) {
+            const badge = document.getElementById('sync-status');
+            const text = document.getElementById('sync-text');
+            if (isOnline === true) {
+                badge.className = "w-2 h-2 rounded-full bg-emerald-500 inline-block";
+                text.innerText = "Sincronizzato Cloud";
+            } else if (isOnline === false) {
+                badge.className = "w-2 h-2 rounded-full bg-red-500 inline-block";
+                text.innerText = "Errore Connessione";
+            } else {
+                badge.className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse inline-block";
+                text.innerText = "Salvataggio...";
+            }
+        }
+
+        // ================= UI RENDER & LOGIC =================
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('log-date').valueAsDate = new Date();
+        });
+
+        function updateUI() {
+            document.getElementById('header-km-display').innerText = `${state.settings.currentKm.toLocaleString('it-IT')} km`;
+            document.getElementById('setting-current-km').value = state.settings.currentKm;
+            document.getElementById('setting-km-week').value = state.settings.kmPerWeek;
+            renderPlan();
+            renderLogs();
+            populateLogSelect();
+        }
+
+        function switchTab(tab) {
+            ['plan', 'logs', 'settings'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                const btn = document.getElementById(`tab-btn-${t}`);
+                btn.classList.remove('border-alfa', 'text-alfa', 'font-bold');
+                btn.classList.add('border-transparent');
+            });
+
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-btn-${tab}`);
+            activeBtn.classList.remove('border-transparent');
+            activeBtn.classList.add('border-alfa', 'text-alfa', 'font-bold');
+        }
+
+        function computeItemStatus(item) {
+            if (!item.active) return { status: 'INATTIVO', label: 'INATTIVO', color: 'slate', priority: 5 };
+
+            const itemLogs = state.logs.filter(l => l.itemName === item.name);
+            const lastKm = itemLogs.length ? Math.max(...itemLogs.map(l => Number(l.km))) : null;
+            const lastDate = itemLogs.length ? Math.max(...itemLogs.map(l => new Date(l.date).getTime())) : null;
+
+            const nextKm = (lastKm !== null && item.adoptedKm) ? lastKm + item.adoptedKm : null;
+            const nextDateFromTime = (lastDate !== null && item.adoptedMonths)
+                ? new Date(lastDate + (item.adoptedMonths * 30.4375 * 24 * 60 * 60 * 1000)) : null;
+
+            const now = new Date().getTime();
+            const kmMissing = nextKm !== null ? nextKm - state.settings.currentKm : null;
+
+            let isScaduto = (kmMissing !== null && kmMissing <= 0) || (nextDateFromTime !== null && nextDateFromTime.getTime() <= now);
+            let isInScadenza = !isScaduto && ((kmMissing !== null && kmMissing <= state.settings.dueSoonKm) || (nextDateFromTime !== null && (nextDateFromTime.getTime() - now) <= (state.settings.dueSoonDays * 86400000)));
+
+            if (lastKm === null && lastDate === null) return { status: 'DA_VERIFICARE', label: 'DA VERIFICARE', color: 'blue', priority: 3, lastKm, nextKm, kmMissing };
+            if (isScaduto) return { status: 'SCADUTO', label: 'SCADUTO', color: 'red', priority: 1, lastKm, nextKm, kmMissing };
+            if (isInScadenza) return { status: 'IN_SCADENZA', label: 'IN SCADENZA', color: 'amber', priority: 2, lastKm, nextKm, kmMissing };
+
+            return { status: 'OK', label: 'REGOLARE', color: 'emerald', priority: 4, lastKm, nextKm, kmMissing };
+        }
+
+        function renderPlan() {
+            const container = document.getElementById('plan-items-container');
+            const search = document.getElementById('search-input').value.toLowerCase();
+            const areaFilter = document.getElementById('filter-area').value;
+
+            let counts = { SCADUTO: 0, IN_SCADENZA: 0, OK: 0 };
+            const computedList = state.items.map(item => {
+                const comp = computeItemStatus(item);
+                if (comp.status === 'SCADUTO') counts.SCADUTO++;
+                if (comp.status === 'IN_SCADENZA') counts.IN_SCADENZA++;
+                if (comp.status === 'OK') counts.OK++;
+                return { item, comp };
+            }).sort((a, b) => a.comp.priority - b.comp.priority);
+
+            document.getElementById('cnt-scaduto').innerText = counts.SCADUTO;
+            document.getElementById('cnt-scadenza').innerText = counts.IN_SCADENZA;
+            document.getElementById('cnt-ok').innerText = counts.OK;
+
+            container.innerHTML = '';
+            computedList.forEach(({ item, comp }) => {
+                if (areaFilter !== 'ALL' && item.area !== areaFilter) return;
+
+                const nameText = (item.name || '').toLowerCase();
+                const notesText = (item.notes || '').toLowerCase();
+                if (search && !nameText.includes(search) && !notesText.includes(search)) return;
+
+                const badgeColors = {
+                    red: 'bg-red-900/60 text-red-300 border-red-700',
+                    amber: 'bg-amber-900/60 text-amber-300 border-amber-700',
+                    emerald: 'bg-emerald-900/60 text-emerald-300 border-emerald-700',
+                    blue: 'bg-blue-900/60 text-blue-300 border-blue-700',
+                    slate: 'bg-slate-800 text-slate-500 border-slate-700'
+                };
+
+                const safeNameForOnclick = String(item.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+                const card = document.createElement('div');
+                card.className = `bg-slate-800 border ${comp.status === 'SCADUTO' ? 'border-red-800/80' : 'border-slate-700'} rounded-xl p-3 shadow-sm space-y-2`;
+                card.innerHTML = `
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">${escapeHtml(item.area || '')}</span>
+                            <h4 class="font-bold text-sm text-slate-100 leading-tight">${escapeHtml(item.name || '')}</h4>
+                        </div>
+                        <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${badgeColors[comp.color]}">${comp.label}</span>
+                    </div>
+                    <div class="text-xs text-slate-300 grid grid-cols-2 gap-x-2 gap-y-1 bg-slate-900/60 p-2 rounded-lg">
+                        <div><span class="text-slate-500 text-[10px]">Ultimo Eseguito:</span><br><span class="font-mono font-semibold">${comp.lastKm ? comp.lastKm.toLocaleString('it-IT') + ' km' : 'Non registrato'}</span></div>
+                        <div><span class="text-slate-500 text-[10px]">Prossima Scadenza:</span><br><span class="font-mono font-semibold">${comp.nextKm ? comp.nextKm.toLocaleString('it-IT') + ' km' : '—'}</span></div>
+                        ${comp.kmMissing !== null ? `
+                            <div class="col-span-2 pt-1 border-t border-slate-800 flex justify-between items-center text-[11px]">
+                                <span class="text-slate-400">Residuo:</span>
+                                <span class="font-mono font-bold ${comp.kmMissing < 0 ? 'text-red-400' : 'text-amber-400'}">
+                                    ${comp.kmMissing < 0 ? `Superato di ${Math.abs(comp.kmMissing).toLocaleString('it-IT')} km` : `${comp.kmMissing.toLocaleString('it-IT')} km rimasti`}
+                                </span>
+                            </div>` : ''}
+                    </div>
+                    ${item.notes ? `<p class="text-[11px] text-slate-400 italic">${escapeHtml(item.notes)}</p>` : ''}
+                    <div class="flex justify-end pt-1">
+                        <button onclick="quickLog('${safeNameForOnclick}')" class="text-[11px] bg-slate-700 hover:bg-slate-600 text-slate-200 px-2.5 py-1 rounded-md font-semibold transition">✏️ Registra Esecuzione</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderLogs() {
+            const container = document.getElementById('logs-list-container');
+            container.innerHTML = '';
+            if (state.logs.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs">Nessun intervento a registro.</div>`;
+                return;
+            }
+
+            [...state.logs].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach((log) => {
+                const item = document.createElement('div');
+                item.className = 'bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs space-y-1';
+                item.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <span class="font-bold text-slate-200">${escapeHtml(log.itemName || '')}</span>
+                        <button onclick="deleteLog(${log.id})" class="text-red-400 hover:text-red-300 font-bold text-xs px-1">✕</button>
+                    </div>
+                    <div class="flex justify-between text-slate-400 font-mono text-[11px]">
+                        <span>📅 ${new Date(log.date).toLocaleDateString('it-IT')}</span>
+                        <span>🛣️ ${Number(log.km).toLocaleString('it-IT')} km</span>
+                    </div>
+                    ${log.doneBy || log.cost ? `<div class="flex justify-between text-slate-400 text-[11px] pt-0.5"><span>Eseguito da: ${escapeHtml(log.doneBy || '—')}</span><span class="font-semibold text-emerald-400">${log.cost ? '€ ' + Number(log.cost).toFixed(2) : ''}</span></div>` : ''}
+                    ${log.notes ? `<p class="text-slate-400 italic text-[10px] pt-1 border-t border-slate-700/50">${escapeHtml(log.notes)}</p>` : ''}
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function populateLogSelect() {
+            const select = document.getElementById('log-item-name');
+            const prevValue = select.value;
+            select.innerHTML = '';
+            state.items.forEach(i => {
+                const opt = document.createElement('option');
+                opt.value = i.name;
+                opt.innerText = `[${i.area}] ${i.name}`;
+                select.appendChild(opt);
+            });
+            if (prevValue && state.items.some(i => i.name === prevValue)) {
+                select.value = prevValue;
+            }
+        }
+
+        function quickLog(itemName) {
+            switchTab('logs');
+            populateLogSelect();
+            document.getElementById('log-item-name').value = itemName;
+            document.getElementById('log-km').value = state.settings.currentKm;
+        }
+
+        function handleAddLog(e) {
+            e.preventDefault();
+            const newLog = {
+                id: Date.now(),
+                itemName: document.getElementById('log-item-name').value,
+                date: document.getElementById('log-date').value,
+                km: Number(document.getElementById('log-km').value),
+                doneBy: document.getElementById('log-who').value,
+                cost: document.getElementById('log-cost').value ? Number(document.getElementById('log-cost').value) : null,
+                notes: document.getElementById('log-notes').value
+            };
+
+            state.logs.push(newLog);
+            if (newLog.km > state.settings.currentKm) state.settings.currentKm = newLog.km;
+
+            syncToCloud();
+            document.getElementById('log-notes').value = '';
+            document.getElementById('log-cost').value = '';
+            switchTab('plan');
+        }
+
+        function deleteLog(id) {
+            if (confirm('Eliminare questo intervento dal registro Cloud?')) {
+                state.logs = state.logs.filter(l => l.id !== id);
+                syncToCloud();
+            }
+        }
+
+        function updateCurrentKm() {
+            const val = Number(document.getElementById('setting-current-km').value);
+            if (!isNaN(val) && val >= 0) {
+                state.settings.currentKm = val;
+                syncToCloud();
+            }
+        }
+
+        function saveSettingsFromForm() {
+            state.settings.kmPerWeek = Number(document.getElementById('setting-km-week').value) || 650;
+            syncToCloud();
+        }
+
+        function exportCSV() {
+            if (state.logs.length === 0) return alert('Registro vuoto.');
+            const esc = s => `"${String(s || '').replace(/"/g, '""')}"`;
+            let csv = 'Data,Intervento,Km,Eseguito Da,Costo,Note\n';
+            state.logs.forEach(l => {
+                csv += `${esc(l.date)},${esc(l.itemName)},${l.km || 0},${esc(l.doneBy)},${l.cost || ''},${esc(l.notes)}\n`;
+            });
+            downloadFile(csv, 'giulietta_registro.csv', 'text/csv');
+        }
+
+        function exportJSON() {
+            downloadFile(JSON.stringify(state, null, 2), 'giulietta_cloud_backup.json', 'application/json');
+        }
+
+        function downloadFile(content, fileName, contentType) {
+            const a = document.createElement('a');
+            const file = new Blob([content], { type: contentType });
+            a.href = URL.createObjectURL(file);
+            a.download = fileName;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+    </script>
+</body>
+</html>

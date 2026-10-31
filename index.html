@@ -92,7 +92,7 @@
                 <form id="log-form" onsubmit="handleAddLog(event)" class="space-y-3">
                     <div>
                         <label class="block text-[10px] text-slate-400 font-semibold mb-1">INTERVENTO</label>
-                        <select id="log-item-name" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100 focus:outline-none focus:border-alfa"></select>
+                        <select id="log-item-name" required class="w-full h-10 bg-slate-900 border border-slate-700 rounded-lg px-3 text-xs text-slate-100 focus:outline-none focus:border-alfa"></select>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
@@ -408,21 +408,28 @@
             });
         }
 
-        function populateLogSelect() {
-            const select = document.getElementById('log-item-name');
-            const prevValue = select.value; // memorizza selezione corrente
-            select.innerHTML = '';
-            state.items.forEach(i => {
-                const opt = document.createElement('option');
-                opt.value = i.name;
-                opt.innerText = `[${i.area}] ${i.name}`;
-                select.appendChild(opt);
-            });
-            // Ripristina la selezione precedente se ancora valida
-            if (prevValue && state.items.some(i => i.name === prevValue)) {
-                select.value = prevValue;
-            }
-        }
+function populateLogSelect() {
+    const select = document.getElementById('log-item-name');
+    const prevValue = select.value;
+    select.innerHTML = '';
+    state.items.forEach(i => {
+        const opt = document.createElement('option');
+        opt.value = i.name;
+        opt.innerText = `[${i.area}] ${i.name}`;
+        // Assicura che le opzioni nel menu a tendina abbiano sfondo scuro e testo bianco
+        opt.className = "bg-slate-900 text-slate-100 py-1"; 
+        select.appendChild(opt);
+    });
+    if (prevValue && state.items.some(i => i.name === prevValue)) {
+        select.value = prevValue;
+    }
+}
+
+// Assicura l'inizializzazione dell'interfaccia fin dall'avvio della pagina
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('log-date').valueAsDate = new Date();
+    updateUI();
+});
 
         function quickLog(itemName) {
             switchTab('logs');

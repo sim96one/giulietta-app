@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giulietta 1.4T - Cloud App</title>
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1e293b">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { colors: { alfa: '#990000', alfadark: '#660000' } } }
+        }
+    </script>
+
+    <!-- Firebase SDK (Compat Version per file singolo HTML) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-20 select-none">
+
+    <!-- HEADER / APP BAR -->
+    <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-30 px-4 py-3 shadow-md flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="bg-alfa text-white p-2 rounded-lg font-black text-xl shadow">🍀</div>
+            <div>
+                <h1 class="font-bold text-lg leading-tight">Giulietta 1.4T 120CV</h1>
+                <div class="flex items-center gap-1.5">
+                    <span id="sync-status" class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>
+                    <p id="sync-text" class="text-[10px] text-slate-400">Connessione Cloud...</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-slate-700/60 border border-slate-600 px-3 py-1.5 rounded-xl text-right">
+            <div class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Km Attuali</div>
+            <div id="header-km-display" class="font-mono font-bold text-amber-400 text-sm">-- km</div>
+        </div>
+    </header>
+
+    <!-- NAVIGATION TABS -->
+    <nav class="flex bg-slate-800 border-b border-slate-700 text-xs font-semibold text-slate-400">
+        <button onclick="switchTab('plan')" id="tab-btn-plan" class="flex-1 py-3 text-center border-b-2 border-alfa text-alfa font-bold transition">📋 PIANO</button>
+        <button onclick="switchTab('logs')" id="tab-btn-logs" class="flex-1 py-3 text-center border-b-2 border-transparent hover:text-slate-200 transition">📜 REGISTRO</button>
+        <button onclick="switchTab('settings')" id="tab-btn-settings" class="flex-1 py-3 text-center border-b-2 border-transparent hover:text-slate-200 transition">⚙️ IMPOSTAZIONI / BACKUP</button>
+    </nav>
+
+    <!-- MAIN CONTAINER -->
+    <main class="max-w-xl mx-auto p-4">
+
+        <!-- TAB 1: PIANO -->
+        <section id="tab-plan" class="space-y-4">
+            <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                <div class="bg-red-950/40 border border-red-800/50 p-2.5 rounded-xl">
+                    <div id="cnt-scaduto" class="text-lg font-bold text-red-400">0</div>
+                    <div class="text-slate-400 text-[10px] font-semibold">SCADUTI</div>
+                </div>
+                <div class="bg-amber-950/40 border border-amber-800/50 p-2.5 rounded-xl">
+                    <div id="cnt-scadenza" class="text-lg font-bold text-amber-400">0</div>
+                    <div class="text-slate-400 text-[10px] font-semibold">IN SCADENZA</div>
+                </div>
+                <div class="bg-emerald-950/40 border border-emerald-800/50 p-2.5 rounded-xl">
+                    <div id="cnt-ok" class="text-lg font-bold text-emerald-400">0</div>
+                    <div class="text-slate-400 text-[10px] font-semibold">REGOLARI</div>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <input type="text" id="search-input" oninput="renderPlan()" placeholder="Cerca intervento..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-alfa">
+                <select id="filter-area" onchange="renderPlan()" class="bg-slate-800 border border-slate-700 rounded-xl px-2 py-2 text-xs text-slate-300 focus:outline-none">
+                    <option value="ALL">Tutte le aree</option>
+                    <option value="Motore">Motore</option>
+                    <option value="Distribuzione">Distribuzione</option>
+                    <option value="Liquidi">Liquidi</option>
+                    <option value="Freni e ruote">Freni/Ruote</option>
+                    <option value="Elettrico">Elettrico</option>
+                    <option value="GPL">GPL</option>
+                </select>
+            </div>
+
+            <div id="plan-items-container" class="space-y-3"></div>
+        </section>
+
+        <!-- TAB 2: REGISTRO -->
+        <section id="tab-logs" class="space-y-4 hidden">
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-3 shadow">
+                <h3 class="font-bold text-sm text-slate-200">➕ Registra Nuovo Intervento</h3>
+                <form id="log-form" onsubmit="handleAddLog(event)" class="space-y-3">
+                    <div>
+                        <label class="block text-[10px] text-slate-400 font-semibold mb-1">INTERVENTO</label>
+                        <select id="log-item-name" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100 focus:outline-none focus:border-alfa"></select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 font-semibold mb-1">DATA</label>
+                            <input type="date" id="log-date" required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 font-semibold mb-1">KM VEICOLO</label>
+                            <input type="number" id="log-km" required placeholder="62200" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 font-semibold mb-1">CHI HA ESEGUITO</label>
+                            <input type="text" id="log-who" placeholder="Fai da te / Officina" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 font-semibold mb-1">COSTO (€)</label>
+                            <input type="number" step="0.01" id="log-cost" placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-slate-400 font-semibold mb-1">NOTE / MARCA RICAMBI</label>
+                        <input type="text" id="log-notes" placeholder="Es. Selenia 5W-40, filtro UFI" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100">
+                    </div>
+                    <button type="submit" class="w-full bg-alfa hover:bg-alfadark text-white font-bold py-2.5 rounded-lg text-xs transition shadow">SALVA IN CLOUD</button>
+                </form>
+            </div>
+
+            <div class="space-y-2">
+                <h3 class="font-bold text-xs text-slate-400 uppercase tracking-wider px-1">Cronologia Interventi</h3>
+                <div id="logs-list-container" class="space-y-2"></div>
+            </div>
+        </section>
+
+        <!-- TAB 3: IMPOSTAZIONI & BACKUP -->
+        <section id="tab-settings" class="space-y-4 hidden">
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-3 shadow">
+                <h3 class="font-bold text-sm text-slate-200">🚘 Parametri Veicolo</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Chilometraggio Attuale Auto</label>
+                        <div class="flex gap-2">
+                            <input type="number" id="setting-current-km" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-amber-400 font-mono font-bold">
+                            <button onclick="updateCurrentKm()" class="bg-slate-700 hover:bg-slate-600 px-4 rounded-lg text-xs font-bold text-slate-200">Aggiorna</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">Km Medi Settimanali</label>
+                        <input type="number" id="setting-km-week" onchange="saveSettingsFromForm()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-100">
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-3 shadow">
+                <h3 class="font-bold text-sm text-slate-200">💾 Esportazione Locale</h3>
+                <button onclick="exportCSV()" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-lg text-xs transition">📊 ESPORTA REGISTRO IN CSV (Excel)</button>
+                <button onclick="exportJSON()" class="w-full bg-blue-700 hover:bg-blue-600 text-white font-bold py-2.5 rounded-lg text-xs transition">📦 DOWNLOAD BACKUP (JSON)</button>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // ================= FIREBASE CONFIGURATION =================
+        // INSERISCI QUI LE SCRIPT CONFIG DI FIREBASE CONSOLE
+        const firebaseConfig = {
+            apiKey: "AIzaSyA9LSM9EHRE1qoXfMgvxLOc7GrGb6Ib-T8",
+			authDomain: "giulietta-manutenzione.firebaseapp.com",
+			projectId: "giulietta-manutenzione",
+			storageBucket: "giulietta-manutenzione.firebasestorage.app",
+			messagingSenderId: "880793650334",
+			appId: "1:880793650334:web:aaded736ab7d000288678f",
+			measurementId: "G-QVNSE418R1"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const docRef = db.collection('giulietta').doc('maintenance_data');
+
+        // ================= DEFAULT DATA =================
+        const DEFAULT_ITEMS = [
+            { id: 1, area: "Motore", name: "Olio motore + filtro olio", libretto: "15.000 km / 12 mesi", adoptedKm: 10000, adoptedMonths: 12, who: "Fai da te", active: true, notes: "Specifica Fiat 9.55535-S2 / ACEA C3 5W-40." },
+            { id: 2, area: "Motore", name: "Candele di accensione", libretto: "30.000 km", adoptedKm: 30000, adoptedMonths: 24, who: "Officina", active: true, notes: "Candele Iridio/Platino T-Jet." },
+            { id: 3, area: "Motore", name: "Filtro aria motore", libretto: "30.000 km", adoptedKm: 30000, adoptedMonths: 24, who: "Fai da te", active: true, notes: "Ispezione ad ogni cambio olio." },
+            { id: 4, area: "Motore", name: "Filtro abitacolo / antipolline", libretto: "15.000 km / 12 mesi", adoptedKm: 15000, adoptedMonths: 12, who: "Fai da te", active: true, notes: "Carboni attivi." },
+            { id: 5, area: "Distribuzione", name: "Kit Distribuzione + Pompa Acqua", libretto: "120.000 km / 60 mesi", adoptedKm: 120000, adoptedMonths: 60, who: "Officina", active: true, notes: "Sostituire assieme al tendicinghia e cinghia servizi." },
+            { id: 6, area: "Distribuzione", name: "Cinghia servizi / accessori", libretto: "120.000 km / 60 mesi", adoptedKm: 120000, adoptedMonths: 60, who: "Officina", active: true, notes: "Controllare usura visiva." },
+            { id: 7, area: "Liquidi", name: "Liquido raffreddamento (Paraflu UP)", libretto: "Ogni 4-5 anni", adoptedKm: 90000, adoptedMonths: 60, who: "Officina", active: true, notes: "Liquido rosso OAT." },
+            { id: 8, area: "Liquidi", name: "Olio cambio manuale (C635)", libretto: "Non previsto", adoptedKm: 90000, adoptedMonths: 72, who: "Officina", active: true, notes: "Consigliato per longevità sincronizzatori." },
+            { id: 9, area: "Liquidi", name: "Liquido freni (DOT 4)", libretto: "24 mesi", adoptedKm: null, adoptedMonths: 24, who: "Officina", active: true, notes: "Sostituzione igroscopica a tempo." },
+            { id: 10, area: "Freni e ruote", name: "Pastiglie e dischi freno", libretto: "Ad ogni tagliando", adoptedKm: 15000, adoptedMonths: 12, who: "Fai da te", active: true, notes: "Verifica usura visiva." },
+            { id: 11, area: "Freni e ruote", name: "Inversione pneumatici", libretto: "15.000 km", adoptedKm: 15000, adoptedMonths: 12, who: "Fai da te", active: true, notes: "Controllo pressione a freddo." },
+            { id: 12, area: "Elettrico", name: "Batteria Start&Stop (EFB/AGM)", libretto: "Al bisogno", adoptedKm: null, adoptedMonths: 36, who: "Fai da te", active: true, notes: "Test carica annuale." },
+            { id: 13, area: "Documenti", name: "Revisione Ministeriale", libretto: "Ogni 2 anni", adoptedKm: null, adoptedMonths: 24, who: "Centro Revisioni", active: true, notes: "Scadenza entro fine mese." },
+            { id: 14, area: "GPL", name: "Filtri impianto GPL", libretto: "15.000 km / 12 mesi", adoptedKm: 15000, adoptedMonths: 12, who: "Officina GPL", active: false, notes: "Attivare se presente impianto GPL." }
+        ];
+
+        let state = {
+            settings: { currentKm: 62200, kmPerWeek: 650, dueSoonKm: 1500, dueSoonDays: 45 },
+            items: DEFAULT_ITEMS,
+            logs: []
+        };
+
+        // ================= REALTIME CLOUD SYNC =================
+        docRef.onSnapshot((doc) => {
+            if (doc.exists) {
+                state = doc.data();
+                updateSyncBadge(true);
+            } else {
+                // Primo avvio: inizializza database Cloud
+                syncToCloud();
+            }
+            updateUI();
+        }, (error) => {
+            console.error("Errore sincronizzazione Cloud:", error);
+            updateSyncBadge(false);
+        });
+
+        function syncToCloud() {
+            updateSyncBadge(null); // syncing state
+            docRef.set(state).then(() => {
+                updateSyncBadge(true);
+            }).catch(() => {
+                updateSyncBadge(false);
+            });
+        }
+
+        function updateSyncBadge(isOnline) {
+            const badge = document.getElementById('sync-status');
+            const text = document.getElementById('sync-text');
+            if (isOnline === true) {
+                badge.className = "w-2 h-2 rounded-full bg-emerald-500 inline-block";
+                text.innerText = "Sincronizzato Cloud";
+            } else if (isOnline === false) {
+                badge.className = "w-2 h-2 rounded-full bg-red-500 inline-block";
+                text.innerText = "Errore Connessione";
+            } else {
+                badge.className = "w-2 h-2 rounded-full bg-amber-500 animate-pulse inline-block";
+                text.innerText = "Salvataggio...";
+            }
+        }
+
+        // ================= UI RENDER & LOGIC =================
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('log-date').valueAsDate = new Date();
+        });
+
+        function updateUI() {
+            document.getElementById('header-km-display').innerText = `${state.settings.currentKm.toLocaleString('it-IT')} km`;
+            document.getElementById('setting-current-km').value = state.settings.currentKm;
+            document.getElementById('setting-km-week').value = state.settings.kmPerWeek;
+            renderPlan();
+            renderLogs();
+            populateLogSelect();
+        }
+
+        function switchTab(tab) {
+            ['plan', 'logs', 'settings'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                const btn = document.getElementById(`tab-btn-${t}`);
+                btn.classList.remove('border-alfa', 'text-alfa', 'font-bold');
+                btn.classList.add('border-transparent');
+            });
+
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-btn-${tab}`);
+            activeBtn.classList.remove('border-transparent');
+            activeBtn.classList.add('border-alfa', 'text-alfa', 'font-bold');
+        }
+
+        function computeItemStatus(item) {
+            if (!item.active) return { status: 'INATTIVO', label: 'INATTIVO', color: 'slate', priority: 5 };
+
+            const itemLogs = state.logs.filter(l => l.itemName === item.name);
+            const lastKm = itemLogs.length ? Math.max(...itemLogs.map(l => Number(l.km))) : null;
+            const lastDate = itemLogs.length ? Math.max(...itemLogs.map(l => new Date(l.date).getTime())) : null;
+
+            const nextKm = (lastKm !== null && item.adoptedKm) ? lastKm + item.adoptedKm : null;
+            const nextDateFromTime = (lastDate !== null && item.adoptedMonths) 
+                ? new Date(lastDate + (item.adoptedMonths * 30.4375 * 24 * 60 * 60 * 1000)) : null;
+
+            const now = new Date().getTime();
+            const kmMissing = nextKm !== null ? nextKm - state.settings.currentKm : null;
+            
+            let isScaduto = (kmMissing !== null && kmMissing <= 0) || (nextDateFromTime !== null && nextDateFromTime.getTime() <= now);
+            let isInScadenza = !isScaduto && ((kmMissing !== null && kmMissing <= state.settings.dueSoonKm) || (nextDateFromTime !== null && (nextDateFromTime.getTime() - now) <= (state.settings.dueSoonDays * 86400000)));
+
+            if (lastKm === null && lastDate === null) return { status: 'DA_VERIFICARE', label: 'DA VERIFICARE', color: 'blue', priority: 3, lastKm, nextKm, kmMissing };
+            if (isScaduto) return { status: 'SCADUTO', label: 'SCADUTO', color: 'red', priority: 1, lastKm, nextKm, kmMissing };
+            if (isInScadenza) return { status: 'IN_SCADENZA', label: 'IN SCADENZA', color: 'amber', priority: 2, lastKm, nextKm, kmMissing };
+
+            return { status: 'OK', label: 'REGOLARE', color: 'emerald', priority: 4, lastKm, nextKm, kmMissing };
+        }
+
+        function renderPlan() {
+            const container = document.getElementById('plan-items-container');
+            const search = document.getElementById('search-input').value.toLowerCase();
+            const areaFilter = document.getElementById('filter-area').value;
+
+            let counts = { SCADUTO: 0, IN_SCADENZA: 0, OK: 0 };
+            const computedList = state.items.map(item => {
+                const comp = computeItemStatus(item);
+                if (comp.status === 'SCADUTO') counts.SCADUTO++;
+                if (comp.status === 'IN_SCADENZA') counts.IN_SCADENZA++;
+                if (comp.status === 'OK') counts.OK++;
+                return { item, comp };
+            }).sort((a, b) => a.comp.priority - b.comp.priority);
+
+            document.getElementById('cnt-scaduto').innerText = counts.SCADUTO;
+            document.getElementById('cnt-scadenza').innerText = counts.IN_SCADENZA;
+            document.getElementById('cnt-ok').innerText = counts.OK;
+
+            container.innerHTML = '';
+            computedList.forEach(({ item, comp }) => {
+                if (areaFilter !== 'ALL' && item.area !== areaFilter) return;
+                if (search && !item.name.toLowerCase().includes(search) && !item.notes.toLowerCase().includes(search)) return;
+
+                const badgeColors = {
+                    red: 'bg-red-900/60 text-red-300 border-red-700',
+                    amber: 'bg-amber-900/60 text-amber-300 border-amber-700',
+                    emerald: 'bg-emerald-900/60 text-emerald-300 border-emerald-700',
+                    blue: 'bg-blue-900/60 text-blue-300 border-blue-700',
+                    slate: 'bg-slate-800 text-slate-500 border-slate-700'
+                };
+
+                const card = document.createElement('div');
+                card.className = `bg-slate-800 border ${comp.status === 'SCADUTO' ? 'border-red-800/80' : 'border-slate-700'} rounded-xl p-3 shadow-sm space-y-2`;
+                card.innerHTML = `
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">${item.area}</span>
+                            <h4 class="font-bold text-sm text-slate-100 leading-tight">${item.name}</h4>
+                        </div>
+                        <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-md border ${badgeColors[comp.color]}">${comp.label}</span>
+                    </div>
+                    <div class="text-xs text-slate-300 grid grid-cols-2 gap-x-2 gap-y-1 bg-slate-900/60 p-2 rounded-lg">
+                        <div><span class="text-slate-500 text-[10px]">Ultimo Eseguito:</span><br><span class="font-mono font-semibold">${comp.lastKm ? comp.lastKm.toLocaleString('it-IT') + ' km' : 'Non registrato'}</span></div>
+                        <div><span class="text-slate-500 text-[10px]">Prossima Scadenza:</span><br><span class="font-mono font-semibold">${comp.nextKm ? comp.nextKm.toLocaleString('it-IT') + ' km' : '—'}</span></div>
+                        ${comp.kmMissing !== null ? `
+                            <div class="col-span-2 pt-1 border-t border-slate-800 flex justify-between items-center text-[11px]">
+                                <span class="text-slate-400">Residuo:</span>
+                                <span class="font-mono font-bold ${comp.kmMissing < 0 ? 'text-red-400' : 'text-amber-400'}">
+                                    ${comp.kmMissing < 0 ? `Superato di ${Math.abs(comp.kmMissing).toLocaleString('it-IT')} km` : `${comp.kmMissing.toLocaleString('it-IT')} km rimasti`}
+                                </span>
+                            </div>` : ''}
+                    </div>
+                    ${item.notes ? `<p class="text-[11px] text-slate-400 italic">${item.notes}</p>` : ''}
+                    <div class="flex justify-end pt-1">
+                        <button onclick="quickLog('${item.name}')" class="text-[11px] bg-slate-700 hover:bg-slate-600 text-slate-200 px-2.5 py-1 rounded-md font-semibold transition">✏️ Registra Esecuzione</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function renderLogs() {
+            const container = document.getElementById('logs-list-container');
+            container.innerHTML = '';
+            if (state.logs.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-slate-500 text-xs">Nessun intervento a registro.</div>`;
+                return;
+            }
+
+            [...state.logs].sort((a, b) => new Date(b.date) - new Date(a.date)).forEach((log) => {
+                const item = document.createElement('div');
+                item.className = 'bg-slate-800 border border-slate-700 rounded-xl p-3 text-xs space-y-1';
+                item.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <span class="font-bold text-slate-200">${log.itemName}</span>
+                        <button onclick="deleteLog(${log.id})" class="text-red-400 hover:text-red-300 font-bold text-xs px-1">✕</button>
+                    </div>
+                    <div class="flex justify-between text-slate-400 font-mono text-[11px]">
+                        <span>📅 ${new Date(log.date).toLocaleDateString('it-IT')}</span>
+                        <span>🛣️ ${Number(log.km).toLocaleString('it-IT')} km</span>
+                    </div>
+                    ${log.doneBy || log.cost ? `<div class="flex justify-between text-slate-400 text-[11px] pt-0.5"><span>Eseguito da: ${log.doneBy || '—'}</span><span class="font-semibold text-emerald-400">${log.cost ? '€ ' + Number(log.cost).toFixed(2) : ''}</span></div>` : ''}
+                    ${log.notes ? `<p class="text-slate-400 italic text-[10px] pt-1 border-t border-slate-700/50">${log.notes}</p>` : ''}
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function populateLogSelect() {
+            const select = document.getElementById('log-item-name');
+            select.innerHTML = '';
+            state.items.forEach(i => {
+                const opt = document.createElement('option');
+                opt.value = i.name;
+                opt.innerText = `[${i.area}] ${i.name}`;
+                select.appendChild(opt);
+            });
+        }
+
+        function quickLog(itemName) {
+            switchTab('logs');
+            document.getElementById('log-item-name').value = itemName;
+            document.getElementById('log-km').value = state.settings.currentKm;
+        }
+
+        function handleAddLog(e) {
+            e.preventDefault();
+            const newLog = {
+                id: Date.now(),
+                itemName: document.getElementById('log-item-name').value,
+                date: document.getElementById('log-date').value,
+                km: Number(document.getElementById('log-km').value),
+                doneBy: document.getElementById('log-who').value,
+                cost: document.getElementById('log-cost').value ? Number(document.getElementById('log-cost').value) : null,
+                notes: document.getElementById('log-notes').value
+            };
+
+            state.logs.push(newLog);
+            if (newLog.km > state.settings.currentKm) state.settings.currentKm = newLog.km;
+
+            syncToCloud();
+            document.getElementById('log-notes').value = '';
+            document.getElementById('log-cost').value = '';
+            switchTab('plan');
+        }
+
+        function deleteLog(id) {
+            if (confirm('Eliminare questo intervento dal registro Cloud?')) {
+                state.logs = state.logs.filter(l => l.id !== id);
+                syncToCloud();
+            }
+        }
+
+        function updateCurrentKm() {
+            const val = Number(document.getElementById('setting-current-km').value);
+            if (val > 0) {
+                state.settings.currentKm = val;
+                syncToCloud();
+            }
+        }
+
+        function saveSettingsFromForm() {
+            state.settings.kmPerWeek = Number(document.getElementById('setting-km-week').value) || 650;
+            syncToCloud();
+        }
+
+        function exportCSV() {
+            if (state.logs.length === 0) return alert('Registro vuoto.');
+            let csv = 'Data,Intervento,Km,Eseguito Da,Costo,Note\n';
+            state.logs.forEach(l => { csv += `"${l.date}","${l.itemName}",${l.km},"${l.doneBy || ''}",${l.cost || ''},"${l.notes || ''}"\n`; });
+            downloadFile(csv, 'giulietta_registro.csv', 'text/csv');
+        }
+
+        function exportJSON() {
+            downloadFile(JSON.stringify(state, null, 2), 'giulietta_cloud_backup.json', 'application/json');
+        }
+
+        function downloadFile(content, fileName, contentType) {
+            const a = document.createElement('a');
+            const file = new Blob([content], { type: contentType });
+            a.href = URL.createObjectURL(file);
+            a.download = fileName;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+    </script>
+</body>
+</html>

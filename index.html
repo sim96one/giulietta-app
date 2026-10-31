@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Giulietta 1.4T - Cloud App</title>
+    <!-- PWA Web App Capable -->
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1e293b">
     
     <!-- Tailwind CSS CDN -->
@@ -19,28 +22,28 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-20 select-none">
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-20">
 
     <!-- HEADER / APP BAR -->
     <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-30 px-4 py-3 shadow-md flex items-center justify-between">
         <div class="flex items-center space-x-3">
-            <div class="bg-alfa text-white p-2 rounded-lg font-black text-xl shadow">🍀</div>
+            <div class="bg-alfa text-white p-2 rounded-lg font-black text-xl shadow select-none">🍀</div>
             <div>
-                <h1 class="font-bold text-lg leading-tight">Giulietta 1.4T 120CV</h1>
+                <h1 class="font-bold text-lg leading-tight select-none">Giulietta 1.4T 120CV</h1>
                 <div class="flex items-center gap-1.5">
                     <span id="sync-status" class="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>
-                    <p id="sync-text" class="text-[10px] text-slate-400">Connessione Cloud...</p>
+                    <p id="sync-text" class="text-[10px] text-slate-400 select-none">Connessione Cloud...</p>
                 </div>
             </div>
         </div>
         <div class="bg-slate-700/60 border border-slate-600 px-3 py-1.5 rounded-xl text-right">
-            <div class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Km Attuali</div>
+            <div class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider select-none">Km Attuali</div>
             <div id="header-km-display" class="font-mono font-bold text-amber-400 text-sm">-- km</div>
         </div>
     </header>
 
     <!-- NAVIGATION TABS -->
-    <nav class="flex bg-slate-800 border-b border-slate-700 text-xs font-semibold text-slate-400">
+    <nav class="flex bg-slate-800 border-b border-slate-700 text-xs font-semibold text-slate-400 select-none">
         <button onclick="switchTab('plan')" id="tab-btn-plan" class="flex-1 py-3 text-center border-b-2 border-alfa text-alfa font-bold transition">📋 PIANO</button>
         <button onclick="switchTab('logs')" id="tab-btn-logs" class="flex-1 py-3 text-center border-b-2 border-transparent hover:text-slate-200 transition">📜 REGISTRO</button>
         <button onclick="switchTab('settings')" id="tab-btn-settings" class="flex-1 py-3 text-center border-b-2 border-transparent hover:text-slate-200 transition">⚙️ IMPOSTAZIONI / BACKUP</button>
@@ -51,7 +54,7 @@
 
         <!-- TAB 1: PIANO -->
         <section id="tab-plan" class="space-y-4">
-            <div class="grid grid-cols-3 gap-2 text-center text-xs">
+            <div class="grid grid-cols-3 gap-2 text-center text-xs select-none">
                 <div class="bg-red-950/40 border border-red-800/50 p-2.5 rounded-xl">
                     <div id="cnt-scaduto" class="text-lg font-bold text-red-400">0</div>
                     <div class="text-slate-400 text-[10px] font-semibold">SCADUTI</div>
@@ -155,7 +158,6 @@
 
     <script>
         // ================= FIREBASE CONFIGURATION =================
-        // INSERISCI QUI LE SCRIPT CONFIG DI FIREBASE CONSOLE
         const firebaseConfig = {
             apiKey: "AIzaSyA9LSM9EHRE1qoXfMgvxLOc7GrGb6Ib-T8",
 			authDomain: "giulietta-manutenzione.firebaseapp.com",
@@ -171,6 +173,13 @@
         const docRef = db.collection('giulietta').doc('maintenance_data');
 
         // ================= DEFAULT DATA =================
+        const DEFAULT_SETTINGS = {
+            currentKm: 62200,
+            kmPerWeek: 650,
+            dueSoonKm: 1500,
+            dueSoonDays: 45
+        };
+
         const DEFAULT_ITEMS = [
             { id: 1, area: "Motore", name: "Olio motore + filtro olio", libretto: "15.000 km / 12 mesi", adoptedKm: 10000, adoptedMonths: 12, who: "Fai da te", active: true, notes: "Specifica Fiat 9.55535-S2 / ACEA C3 5W-40." },
             { id: 2, area: "Motore", name: "Candele di accensione", libretto: "30.000 km", adoptedKm: 30000, adoptedMonths: 24, who: "Officina", active: true, notes: "Candele Iridio/Platino T-Jet." },
@@ -189,7 +198,7 @@
         ];
 
         let state = {
-            settings: { currentKm: 62200, kmPerWeek: 650, dueSoonKm: 1500, dueSoonDays: 45 },
+            settings: { ...DEFAULT_SETTINGS },
             items: DEFAULT_ITEMS,
             logs: []
         };
@@ -197,10 +206,15 @@
         // ================= REALTIME CLOUD SYNC =================
         docRef.onSnapshot((doc) => {
             if (doc.exists) {
-                state = doc.data();
+                const cloudData = doc.data();
+                // FIX #2: Merge sicuro con impostazioni di default per evitare undefined
+                state = {
+                    settings: { ...DEFAULT_SETTINGS, ...(cloudData.settings || {}) },
+                    items: cloudData.items || DEFAULT_ITEMS,
+                    logs: cloudData.logs || []
+                };
                 updateSyncBadge(true);
             } else {
-                // Primo avvio: inizializza database Cloud
                 syncToCloud();
             }
             updateUI();
@@ -210,11 +224,14 @@
         });
 
         function syncToCloud() {
-            updateSyncBadge(null); // syncing state
+            updateSyncBadge(null);
             docRef.set(state).then(() => {
                 updateSyncBadge(true);
-            }).catch(() => {
+            }).catch((err) => {
+                console.error("Errore salvataggio Cloud:", err);
                 updateSyncBadge(false);
+                // FIX #9: Feedback visivo di errore salvataggio
+                alert("⚠️ Errore di salvataggio in Cloud! Verifica la connessione o le regole di Firestore.");
             });
         }
 
@@ -300,13 +317,17 @@
             }).sort((a, b) => a.comp.priority - b.comp.priority);
 
             document.getElementById('cnt-scaduto').innerText = counts.SCADUTO;
-            document.getElementById('cnt-scadenza').innerText = counts.IN_SCADENZA;
+            document.getElementById('cnt-scadenza').innerText = counts.SCADENZA;
             document.getElementById('cnt-ok').innerText = counts.OK;
 
             container.innerHTML = '';
             computedList.forEach(({ item, comp }) => {
                 if (areaFilter !== 'ALL' && item.area !== areaFilter) return;
-                if (search && !item.name.toLowerCase().includes(search) && !item.notes.toLowerCase().includes(search)) return;
+                
+                // FIX #1: Evita il crash se item.notes o item.name sono undefined
+                const nameText = (item.name || '').toLowerCase();
+                const notesText = (item.notes || '').toLowerCase();
+                if (search && !nameText.includes(search) && !notesText.includes(search)) return;
 
                 const badgeColors = {
                     red: 'bg-red-900/60 text-red-300 border-red-700',
@@ -420,7 +441,8 @@
 
         function updateCurrentKm() {
             const val = Number(document.getElementById('setting-current-km').value);
-            if (val > 0) {
+            // FIX #4: Consente di aggiornare anche a 0 km
+            if (!isNaN(val) && val >= 0) {
                 state.settings.currentKm = val;
                 syncToCloud();
             }
@@ -431,10 +453,14 @@
             syncToCloud();
         }
 
+        // FIX #5: Escape corretto delle virgolette nel formato CSV
         function exportCSV() {
             if (state.logs.length === 0) return alert('Registro vuoto.');
+            const esc = s => `"${String(s || '').replace(/"/g, '""')}"`;
             let csv = 'Data,Intervento,Km,Eseguito Da,Costo,Note\n';
-            state.logs.forEach(l => { csv += `"${l.date}","${l.itemName}",${l.km},"${l.doneBy || ''}",${l.cost || ''},"${l.notes || ''}"\n`; });
+            state.logs.forEach(l => { 
+                csv += `${esc(l.date)},${esc(l.itemName)},${l.km || 0},${esc(l.doneBy)},${l.cost || ''},${esc(l.notes)}\n`; 
+            });
             downloadFile(csv, 'giulietta_registro.csv', 'text/csv');
         }
 

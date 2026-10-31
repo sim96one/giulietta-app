@@ -3,14 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Giulietta 1.4T - Cloud App (v2.1)</title>
-    <!-- PWA Web App Capable -->
+    <title>Giulietta 1.4T - Cloud App</title>
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1e293b">
 
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -18,7 +16,6 @@
         }
     </script>
 
-    <!-- Firebase SDK (Compat Version per file singolo HTML) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
@@ -30,7 +27,6 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-20">
 
-    <!-- HEADER / APP BAR -->
     <header class="bg-slate-800 border-b border-slate-700 sticky top-0 z-30 px-4 py-3 shadow-md flex items-center justify-between">
         <div class="flex items-center space-x-3">
             <div class="bg-alfa text-white p-2 rounded-lg font-black text-xl shadow select-none">🍀</div>
@@ -48,17 +44,14 @@
         </div>
     </header>
 
-    <!-- NAVIGATION TABS -->
     <nav class="flex bg-slate-800 border-b border-slate-700 text-xs font-semibold text-slate-400 select-none">
         <button onclick="switchTab('plan')" id="tab-btn-plan" class="flex-1 py-3 text-center border-b-2 border-alfa text-alfa font-bold transition">📋 PIANO</button>
         <button onclick="switchTab('logs')" id="tab-btn-logs" class="flex-1 py-3 text-center border-b-2 border-transparent hover:text-slate-200 transition">📜 REGISTRO</button>
         <button onclick="switchTab('settings')" id="tab-btn-settings" class="flex-1 py-3 text-center border-b-2 border-transparent hover:text-slate-200 transition">⚙️ IMPOSTAZIONI / BACKUP</button>
     </nav>
 
-    <!-- MAIN CONTAINER -->
     <main class="max-w-xl mx-auto p-4">
 
-        <!-- TAB 1: PIANO -->
         <section id="tab-plan" class="space-y-4">
             <div class="grid grid-cols-3 gap-2 text-center text-xs select-none">
                 <div class="bg-red-950/40 border border-red-800/50 p-2.5 rounded-xl">
@@ -91,7 +84,6 @@
             <div id="plan-items-container" class="space-y-3"></div>
         </section>
 
-        <!-- TAB 2: REGISTRO -->
         <section id="tab-logs" class="space-y-4 hidden">
             <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-3 shadow">
                 <h3 class="font-bold text-sm text-slate-200">➕ Registra Nuovo Intervento</h3>
@@ -134,7 +126,6 @@
             </div>
         </section>
 
-        <!-- TAB 3: IMPOSTAZIONI & BACKUP -->
         <section id="tab-settings" class="space-y-4 hidden">
             <div class="bg-slate-800 border border-slate-700 rounded-xl p-4 space-y-3 shadow">
                 <h3 class="font-bold text-sm text-slate-200">🚘 Parametri Veicolo</h3>
@@ -163,7 +154,6 @@
     </main>
 
     <script>
-        // ================= FIREBASE CONFIGURATION =================
         const firebaseConfig = {
             apiKey: "AIzaSyA9LSM9EHRE1qoXfMgvxLOc7GrGb6Ib-T8",
             authDomain: "giulietta-manutenzione.firebaseapp.com",
@@ -178,7 +168,6 @@
         const db = firebase.firestore();
         const docRef = db.collection('giulietta').doc('maintenance_data');
 
-        // ================= DEFAULT DATA =================
         const DEFAULT_SETTINGS = {
             currentKm: 62200,
             kmPerWeek: 650,
@@ -209,7 +198,6 @@
             logs: []
         };
 
-        // ================= UTILS =================
         function escapeHtml(str) {
             return String(str ?? '')
                 .replace(/&/g, '&amp;')
@@ -219,7 +207,6 @@
                 .replace(/'/g, '&#39;');
         }
 
-        // ================= REALTIME CLOUD SYNC =================
         docRef.onSnapshot((doc) => {
             if (doc.exists) {
                 const cloudData = doc.data();
@@ -254,7 +241,7 @@
             const text = document.getElementById('sync-text');
             if (isOnline === true) {
                 badge.className = "w-2 h-2 rounded-full bg-emerald-500 inline-block";
-                text.innerHTML = "Sincronizzato <span class='text-emerald-400 font-bold'>(v2.1)</span>";
+                text.innerText = "Sincronizzato Cloud";
             } else if (isOnline === false) {
                 badge.className = "w-2 h-2 rounded-full bg-red-500 inline-block";
                 text.innerText = "Errore Connessione";
@@ -264,7 +251,6 @@
             }
         }
 
-        // ================= UI RENDER & LOGIC =================
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('log-date').valueAsDate = new Date();
         });
@@ -293,25 +279,47 @@
             activeBtn.classList.add('border-alfa', 'text-alfa', 'font-bold');
         }
 
+        // LOGICA INTEGRATA: Base originale + Idea di Gemini per i "Mai Eseguiti"
         function computeItemStatus(item) {
-            // Sicurezza: se l'elemento non esiste o è disattivato, restituiamo valori nulli
             if (!item || !item.active) return { status: 'INATTIVO', label: 'INATTIVO', color: 'slate', priority: 5, lastKm: null, nextKm: null, kmMissing: null };
 
             const itemLogs = state.logs.filter(l => l.itemName === item.name);
             const lastKm = itemLogs.length ? Math.max(...itemLogs.map(l => Number(l.km) || 0)) : null;
             const lastDate = itemLogs.length ? Math.max(...itemLogs.map(l => new Date(l.date).getTime() || 0)) : null;
+            const currentKm = state.settings.currentKm || 0;
+            const now = new Date().getTime();
+
+            // NUOVA LOGICA GEMINI (Ripulita): Interventi mai eseguiti
+            if (lastKm === null && lastDate === null) {
+                if (item.adoptedKm && currentKm >= item.adoptedKm) {
+                    return { 
+                        status: 'MAI_ESEGUITO_SCADUTO', 
+                        label: 'DA FARE (SCADUTO)', 
+                        color: 'red', 
+                        priority: 0, 
+                        lastKm: null, 
+                        nextKm: item.adoptedKm, 
+                        kmMissing: item.adoptedKm - currentKm 
+                    };
+                }
+                return { 
+                    status: 'DA_VERIFICARE', 
+                    label: 'MAI FATTO (REGOLARE)', 
+                    color: 'blue', 
+                    priority: 3, 
+                    lastKm: null, 
+                    nextKm: item.adoptedKm, 
+                    kmMissing: item.adoptedKm ? item.adoptedKm - currentKm : null 
+                };
+            }
 
             const nextKm = (lastKm !== null && item.adoptedKm) ? lastKm + Number(item.adoptedKm) : null;
-            const nextDateFromTime = (lastDate !== null && item.adoptedMonths)
-                ? new Date(lastDate + (Number(item.adoptedMonths) * 30.4375 * 24 * 60 * 60 * 1000)) : null;
-
-            const now = new Date().getTime();
-            const kmMissing = nextKm !== null ? nextKm - (state.settings.currentKm || 0) : null;
+            const nextDateFromTime = (lastDate !== null && item.adoptedMonths) ? new Date(lastDate + (Number(item.adoptedMonths) * 30.4375 * 24 * 60 * 60 * 1000)) : null;
+            const kmMissing = nextKm !== null ? nextKm - currentKm : null;
 
             let isScaduto = (kmMissing !== null && kmMissing <= 0) || (nextDateFromTime !== null && nextDateFromTime.getTime() <= now);
             let isInScadenza = !isScaduto && ((kmMissing !== null && kmMissing <= (state.settings.dueSoonKm || 1500)) || (nextDateFromTime !== null && (nextDateFromTime.getTime() - now) <= ((state.settings.dueSoonDays || 45) * 86400000)));
 
-            if (lastKm === null && lastDate === null) return { status: 'DA_VERIFICARE', label: 'DA VERIFICARE', color: 'blue', priority: 3, lastKm, nextKm, kmMissing };
             if (isScaduto) return { status: 'SCADUTO', label: 'SCADUTO', color: 'red', priority: 1, lastKm, nextKm, kmMissing };
             if (isInScadenza) return { status: 'IN_SCADENZA', label: 'IN SCADENZA', color: 'amber', priority: 2, lastKm, nextKm, kmMissing };
 
@@ -324,19 +332,24 @@
             const areaFilter = document.getElementById('filter-area').value;
 
             let counts = { SCADUTO: 0, IN_SCADENZA: 0, OK: 0 };
+            
             const computedList = state.items.map(item => {
                 const comp = computeItemStatus(item);
-                if (comp.status === 'SCADUTO') counts.SCADUTO++;
-                if (comp.status === 'IN_SCADENZA') counts.IN_SCADENZA++;
-                if (comp.status === 'OK') counts.OK++;
+                // Aggiorna i contatori (includendo la nuova logica)
+                if (comp.status === 'SCADUTO' || comp.status === 'MAI_ESEGUITO_SCADUTO') counts.SCADUTO++;
+                else if (comp.status === 'IN_SCADENZA') counts.IN_SCADENZA++;
+                else if (comp.status === 'OK' || comp.status === 'DA_VERIFICARE') counts.OK++;
+                
                 return { item, comp };
             }).sort((a, b) => a.comp.priority - b.comp.priority);
 
+            // Aggiorna UI contatori (usando gli ID corretti del tuo HTML)
             document.getElementById('cnt-scaduto').innerText = counts.SCADUTO;
             document.getElementById('cnt-scadenza').innerText = counts.IN_SCADENZA;
             document.getElementById('cnt-ok').innerText = counts.OK;
 
             container.innerHTML = '';
+            
             computedList.forEach(({ item, comp }) => {
                 if (areaFilter !== 'ALL' && item.area !== areaFilter) return;
 
@@ -344,6 +357,7 @@
                 const notesText = (item.notes || '').toLowerCase();
                 if (search && !nameText.includes(search) && !notesText.includes(search)) return;
 
+                // MAPPATURA COLORI STATICA (Fix per Tailwind Dinamico)
                 const badgeColors = {
                     red: 'bg-red-900/60 text-red-300 border-red-700',
                     amber: 'bg-amber-900/60 text-amber-300 border-amber-700',
@@ -353,12 +367,13 @@
                 };
 
                 const safeNameForOnclick = String(item.name || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
-
-                // Protezione assoluta contro undefined/NaN
                 const hasKmMissing = comp.kmMissing !== null && comp.kmMissing !== undefined && !isNaN(comp.kmMissing);
 
                 const card = document.createElement('div');
-                card.className = `bg-slate-800 border ${comp.status === 'SCADUTO' ? 'border-red-800/80' : 'border-slate-700'} rounded-xl p-3 shadow-sm space-y-2`;
+                // Colore bordo per scaduti
+                const isRed = comp.status === 'SCADUTO' || comp.status === 'MAI_ESEGUITO_SCADUTO';
+                card.className = `bg-slate-800 border ${isRed ? 'border-red-800/80' : 'border-slate-700'} rounded-xl p-3 shadow-sm space-y-2`;
+                
                 card.innerHTML = `
                     <div class="flex items-start justify-between gap-2">
                         <div>
